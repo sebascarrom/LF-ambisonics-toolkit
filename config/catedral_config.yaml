@@ -1,0 +1,49 @@
+# config/catedral_config.yaml
+# =============================
+# Configuración de recinto: Catedral Metropolitana de Buenos Aires
+# Micrófono: Soyuz 013 Ambisonic
+#
+# Completar "positions" cuando los archivos exportados del DAW estén
+# nomenclados. La estructura mínima por posición/fuente debe tener los
+# 4 canales A-format con las claves exactas listadas en channel_order.
+
+room_name: "catedral_metropolitana"
+microphone: "Soyuz 013 Ambisonic"
+
+# Orden de canales A-format tal como se exportan del DAW para este recinto.
+# acoustic_core.normalize_aformat_keys() ya reconoce estos nombres
+# (mapean a la misma geometría tetraédrica que el SP200 — ver discusión
+# de conversión A→B en acoustic_core.py).
+channel_order:
+  - "FRONT L UP"
+  - "FRONT R DOWN"
+  - "BACK L DOWN"
+  - "BACK R UP"
+
+# Bandas de octava a analizar (ISO 3382-1 estándar)
+octave_bands_hz: [125, 250, 500, 1000, 2000, 4000]
+
+# Parámetros de ventana ISO 3382-1 para LF
+lf_window:
+  t1_ms: 5.0
+  t2_ms: 80.0
+
+# Umbral de detección de onset (dB bajo el pico de energía de W)
+onset_threshold_db: -20.0
+
+# ── Posiciones de medición ──────────────────────────────────────────
+# Ejemplo de estructura esperada (descomentar y completar):
+#
+# positions:
+#   P1:
+#     sources:
+#       SS1:
+#         "FRONT L UP":   "data/raw/catedral_metropolitana/P1/P1_SS1_FLU.wav"
+#         "FRONT R DOWN": "data/raw/catedral_metropolitana/P1/P1_SS1_FRD.wav"
+#         "BACK L DOWN":  "data/raw/catedral_metropolitana/P1/P1_SS1_BLD.wav"
+#         "BACK R UP":    "data/raw/catedral_metropolitana/P1/P1_SS1_BRU.wav"
+#   P2:
+#     sources:
+#       SS1: { ... }
+
+positions: {}

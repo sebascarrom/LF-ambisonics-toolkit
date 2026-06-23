@@ -1,0 +1,35 @@
+# ── Entorno virtual ──────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Python ───────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+build/
+dist/
+
+# ── Jupyter ──────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+
+# ── GUI (si se agrega Node/build tooling en Fase 4) ─────────────────
+node_modules/
+gui/dist/
+
+# ── Ableton Live metadata ────────────────────────────────────────────
+*.asd
+
+# ── Sistema operativo / editor ──────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# ── Variables de entorno / credenciales (por si la GUI suma backend) ─
+.env

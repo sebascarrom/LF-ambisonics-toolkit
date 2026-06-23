@@ -1,0 +1,52 @@
+# config/usina_config.yaml
+# ==========================
+# Configuración de recinto: Usina del Arte
+# Micrófono: SoundField SP200
+#
+# Completar "positions" cuando los archivos exportados del DAW estén
+# nomenclados. La estructura mínima por posición/fuente debe tener los
+# 4 canales A-format con las claves exactas listadas en channel_order.
+
+room_name: "usina_del_arte"
+microphone: "SoundField SP200"
+
+# Orden de canales A-format tal como se exportan del DAW para este recinto.
+# acoustic_core.normalize_aformat_keys() ya reconoce estos nombres.
+channel_order:
+  - "LeftFront"
+  - "RightFront"
+  - "LeftBack"
+  - "RightBack"
+
+# Bandas de octava a analizar (ISO 3382-1 estándar)
+octave_bands_hz: [125, 250, 500, 1000, 2000, 4000]
+
+# Parámetros de ventana ISO 3382-1 para LF
+lf_window:
+  t1_ms: 5.0
+  t2_ms: 80.0
+
+# Umbral de detección de onset (dB bajo el pico de energía de W)
+onset_threshold_db: -20.0
+
+# ── Posiciones de medición ──────────────────────────────────────────
+# Ejemplo de estructura esperada (descomentar y completar):
+#
+# positions:
+#   P1:
+#     sources:
+#       SS1:
+#         LeftFront:  "data/raw/usina_del_arte/P1/P1_SS1_LeftFront.wav"
+#         RightFront: "data/raw/usina_del_arte/P1/P1_SS1_RightFront.wav"
+#         LeftBack:   "data/raw/usina_del_arte/P1/P1_SS1_LeftBack.wav"
+#         RightBack:  "data/raw/usina_del_arte/P1/P1_SS1_RightBack.wav"
+#       SS2:
+#         LeftFront:  "data/raw/usina_del_arte/P1/P1_SS2_LeftFront.wav"
+#         RightFront: "data/raw/usina_del_arte/P1/P1_SS2_RightFront.wav"
+#         LeftBack:   "data/raw/usina_del_arte/P1/P1_SS2_LeftBack.wav"
+#         RightBack:  "data/raw/usina_del_arte/P1/P1_SS2_RightBack.wav"
+#   P2:
+#     sources:
+#       SS1: { ... }
+
+positions: {}

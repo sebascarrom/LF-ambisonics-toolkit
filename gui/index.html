@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<!--
+  gui/index.html
+  ================
+  [FASE 4 — pendiente de implementación]
+
+  Interfaz web para carga de archivos WAV, ejecución del pipeline de
+  análisis y visualización comparativa de LF entre posiciones y recintos.
+
+  Funcionalidad prevista:
+  - Carga de archivos A-format (4 mono o 1 multicanal) por drag & drop.
+  - Selección de recinto (aplica config/usina_config.yaml o catedral_config.yaml).
+  - Visualización de curvas LF por banda de octava.
+  - Mapas de comparación entre posiciones dentro de un recinto.
+  - Comparación estadística Usina vs. Catedral.
+  - Exportación de resultados (CSV/JSON) generados por src/io_utils.py.
+
+  El procesamiento (Python) se expone a esta interfaz mediante un backend
+  liviano en gui/api/ (FastAPI o Flask, a definir) o, alternativamente,
+  mediante un puente WASM/Pyodide si se requiere ejecución 100% client-side.
+
+  Estado: NO IMPLEMENTADO.
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>LF Ambisonics Toolkit — GUI (placeholder)</title>
+</head>
+<body>
+  <h1>LF Ambisonics Toolkit</h1>
+  <p>GUI pendiente de implementación — Fase 4 del proyecto.</p>
+</body>
+</html>
