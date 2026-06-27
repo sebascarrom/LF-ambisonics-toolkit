@@ -4,79 +4,148 @@ Pipeline de procesamiento de respuestas al impulso (RIR) ambisónicas
 para el cálculo del parámetro **Lateral Fraction (LF)** y métricas
 espaciales asociadas, según **ISO 3382-1**.
 
-Desarrollado para la comparación entre dos tipologías arquitectónicas
-contrastantes:
+Desarrollado para la comparación entre dos tipologías arquitectónicas:
 
 - **Usina del Arte** (auditorio moderno) — micrófono SoundField SP200.
-- **Catedral Metropolitana de Buenos Aires** (recinto histórico colonial)
-  — micrófono Soyuz 013 Ambisonic.
+- **Catedral Metropolitana de Buenos Aires** (recinto histórico) — micrófono Soyuz 013 Ambisonic.
 
-Proyecto vinculado a la cátedra de Instrumentos y Mediciones Acústicas
-(IMA) y orientado a publicación en FIA2026.
+Proyecto vinculado a la cátedra de Instrumentos y Mediciones Acústicas (IMA),
+orientado a publicación en **FIA2026**.
+
+---
 
 ## Estado del proyecto
 
 | Fase | Contenido | Estado |
 |------|-----------|--------|
-| 1 | Conversión A→B, filtrado por octavas, cálculo de LF | ✅ Implementado (`src/acoustic_core.py`) |
-| 2 | Carga multi-recinto, parámetros espaciales extendidos (IACC, mapas direccionales) | 🔲 Pendiente |
-| 3 | Comparación estadística entre recintos | 🔲 Pendiente |
-| 4 | GUI web interactiva | 🔲 Pendiente |
+| 1 | Conversión A→B, filtrado por octavas, cálculo LF ISO 3382-1 | ✅ Implementado |
+| 1b | Validación contra EASERA Aurora, corrección bugs B-format | ✅ Completado |
+| 2 | `room_loader.py`: multi-posición/fuente, IACC, EDC | 🔲 Pendiente |
+| 3 | Comparación estadística Usina vs. Catedral | 🔲 Pendiente |
+| 4 | GUI de escritorio (CustomTkinter + matplotlib) | ✅ Implementado |
+
+---
+
+## Instalación
+
+```bash
+python -m venv .venv
+source .venv/bin/activate       # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+---
+
+## GUI
+
+```bash
+python gui/app.py
+```
+
+La GUI permite importar RIRs en tres modos:
+
+- **A-format multicanal (4ch):** un WAV de 4 canales en orden LF/RF/LB/RB.
+- **4 archivos mono:** cada cápsula por separado.
+- **B-format (4ch):** importación directa de un archivo ya convertido, con selector de orden de canales (WYZX / WXYZ). Útil para comparar contra exports de plugins comerciales.
+
+Parámetros de onset, ventana de integración y alineación temporal ajustables desde la interfaz. Exporta a B-format WAV en orden WYZX (ACN, compatible con EASERA Aurora).
+
+---
+
+## Uso desde código
+
+```python
+from src.acoustic_core import (
+    load_aformat_mono_files,
+    align_aformat_channels,
+    fine_align_channels,
+    aformat_to_bformat,
+    detect_onset_noise_floor,
+    octave_band_filter,
+    compute_LF_band,
+    OCTAVE_BANDS_HZ,
+)
+import numpy as np
+
+# Cargar 4 canales A-format (exportados desde DAW)
+signals, fs = load_aformat_mono_files({
+    "LF": "data/raw/usina_del_arte/J12/F3 P4 LF SF 1_SS1.wav",
+    "RF": "data/raw/usina_del_arte/J12/F3 P4 RF SF 2_SS1.wav",
+    "LB": "data/raw/usina_del_arte/J12/F3 P4 LB SF 3_SS1.wav",
+    "RB": "data/raw/usina_del_arte/J12/F3 P4 RB SF 4_SS1.wav",
+})
+
+# Alineación temporal (necesaria para archivos exportados por pistas desde DAW)
+aligned, _, onset = align_aformat_channels(signals, fs, noise_window_ms=50, threshold_db=20)
+aligned_fine, _ = fine_align_channels(aligned, fs, onset, reference_channel="LF")
+
+# Conversión A→B y cálculo de LF
+bformat = aformat_to_bformat(aligned_fine, fs)
+onset_sample = detect_onset_noise_floor(bformat.W, fs)
+
+lf_vals = {}
+for fc in OCTAVE_BANDS_HZ:
+    Wf = octave_band_filter(bformat.W, fc, fs)
+    Yf = octave_band_filter(bformat.Y, fc, fs)
+    lf_vals[fc] = compute_LF_band(Wf, Yf, fs, onset=onset_sample)
+
+print({fc: f"{lf:.3f}" for fc, lf in lf_vals.items()})
+```
+
+---
 
 ## Estructura del repositorio
 
 ```
 LF-ambisonics-toolkit/
-├── config/             # Mapeo de canales y posiciones por recinto (YAML)
-├── src/                # Código de procesamiento
-│   ├── acoustic_core.py    ✅ A→B, filtrado octava, LF (ISO 3382-1)
-│   ├── room_loader.py       🔲 Organización multi-posición/fuente
-│   ├── spatial_metrics.py   🔲 IACC, mapas direccionales, EDC
-│   ├── stats_comparison.py  🔲 Comparación estadística entre recintos
-│   └── io_utils.py         ✅ Exportación CSV/JSON
+├── src/
+│   ├── acoustic_core.py     # ✅ Módulo principal: A→B, LF, alineación, I/O
+│   └── io_utils.py          # ✅ Exportación CSV/JSON
+├── gui/
+│   └── app.py               # ✅ GUI CustomTkinter
+├── debug/                   # Scripts de diagnóstico y validación por posición
 ├── data/
-│   ├── raw/             # RIRs A-format crudas por recinto/posición
-│   ├── processed/       # B-format cacheado (opcional)
-│   └── results/         # Resultados exportados
-├── notebooks/           # Exploración y validación
-├── gui/                 # Interfaz web (Fase 4)
-├── docs/
-│   ├── papers/           # Referencias bibliográficas
-│   └── metodologia.md    # Documentación metodológica (sincronizada con el paper)
-└── tests/                # Tests automáticos (señales sintéticas)
+│   ├── raw/                 # RIRs A-format originales
+│   ├── processed/           # B-format exportado (WYZX/ACN)
+│   └── results/             # Resultados LF en CSV
+├── config/                  # usina_config.yaml, catedral_config.yaml
+├── tests/                   # Tests automáticos
+└── requirements.txt
 ```
 
-## Instalación
+---
 
-```bash
-python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
+## Convenciones B-format
 
-## Uso rápido (Fase 1)
+El export usa orden **WYZX (ACN/AmbiX)**, compatible con EASERA Aurora:
 
-```python
-from src.acoustic_core import analyze_rir
+| Canal | Señal | EASERA Aurora |
+|-------|-------|---------------|
+| ch0 | W (omnidireccional) | denominador LF |
+| ch1 | Y (lateral izq-der) | numerador LF ← |
+| ch2 | Z (vertical) | — |
+| ch3 | X (frente-atrás) | — |
 
-# Desde un WAV de 4 canales:
-result = analyze_rir("data/raw/usina_del_arte/P1/P1_4ch.wav")
-print(result.summary())
+> **Nota:** usar orden WXYZ (FuMa) con EASERA hace que EASERA tome X como canal lateral → LF incorrecto.
 
-# Desde 4 archivos mono (nomenclatura Usina):
-result = analyze_rir({
-    "LeftFront":  "data/raw/usina_del_arte/P1/P1_LeftFront.wav",
-    "RightFront": "data/raw/usina_del_arte/P1/P1_RightFront.wav",
-    "LeftBack":   "data/raw/usina_del_arte/P1/P1_LeftBack.wav",
-    "RightBack":  "data/raw/usina_del_arte/P1/P1_RightBack.wav",
-})
-print(result.summary())
-```
+---
 
-```bash
-# O desde terminal:
-python src/acoustic_core.py data/raw/usina_del_arte/P1/P1_4ch.wav
-```
+## Validación
+
+Pipeline validado contra EASERA Aurora en:
+
+| Dataset | Diferencia pipeline vs. EASERA |
+|---------|-------------------------------|
+| Catedral Metropolitana (SY_RIR_TEST) | < 5% en 250–2000 Hz |
+| Pori Promenadikeskus (s1_r1_sf) | < 5% en 125–2000 Hz |
+| Usina del Arte — G6_SS1 alineado | < 15% en todas las bandas |
+| Usina del Arte — J12 alineado | < 14% en todas las bandas |
+
+La diferencia vs. plugins comerciales de conversión A→B es inherente a la
+matriz tetraédrica estándar (sin calibración de cápsula), no a un error del
+pipeline. Ver `RESUMEN_PROYECTO.md` sección 14 para el análisis completo.
+
+---
 
 ## Tests
 
@@ -84,19 +153,8 @@ python src/acoustic_core.py data/raw/usina_del_arte/P1/P1_4ch.wav
 pytest tests/
 ```
 
-## Próximos pasos
-
-1. Nomenclar y organizar los archivos exportados del DAW para ambos
-   recintos en `data/raw/`.
-2. Completar `config/usina_config.yaml` y `config/catedral_config.yaml`
-   con las rutas reales de posiciones y fuentes.
-3. Implementar `room_loader.py` para automatizar el procesamiento
-   multi-posición.
-4. Validar `LF_mean` contra valores de referencia de literatura
-   (Barron, Beranek, Hidaka).
+---
 
 ## Referencias
 
-Ver `docs/papers/` y `docs/metodologia.md` para el detalle de normativa
-(ISO 3382-1) y literatura citada en las decisiones metodológicas del
-código.
+`docs/papers/` y `docs/metodologia.md` para normativa ISO 3382-1 y literatura citada.
