@@ -3,11 +3,7 @@ scipy>=1.10
 PyYAML>=6.0
 pandas>=2.0
 pytest>=7.4
+matplotlib>=3.8
 
-# Fase 4 (GUI) — descomentar cuando se implemente el backend:
-# fastapi>=0.110
-# uvicorn>=0.29
-
-# Notebooks (opcional):
-# jupyterlab>=4.0
-# matplotlib>=3.8
+# GUI (Fase 4)
+customtkinter>=5.2

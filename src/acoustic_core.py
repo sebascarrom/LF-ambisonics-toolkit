@@ -534,6 +534,22 @@ def compute_LF_fullband(bformat: BFormatSignals,
 
 # ─── Module 6: I/O — load A-format signals ────────────────────────────────────
 
+def _normalize_wav(data: np.ndarray) -> np.ndarray:
+    """
+    Normalize a WAV array to float64 in the range [-1, 1].
+
+    scipy.io.wavfile returns:
+      - int16  → divide by 2**15  (32768)
+      - int32  → divide by 2**31  (2147483648)
+      - float32/float64 → already in [-1, 1], just cast
+    """
+    if data.dtype == np.int16:
+        return data.astype(np.float64) / 32768.0
+    elif data.dtype == np.int32:
+        return data.astype(np.float64) / 2147483648.0
+    else:
+        return data.astype(np.float64)  # float32 / float64: passthrough
+
 def load_aformat_mono_files(paths: dict) -> tuple[dict, int]:
     """
     Load A-format from 4 separate mono WAV files.
@@ -566,7 +582,7 @@ def load_aformat_mono_files(paths: dict) -> tuple[dict, int]:
                 f"File '{path}' has {data.shape[1]} channels. "
                 "Expected mono (single-channel) WAV."
             )
-        signals[key] = data.astype(np.float64)
+        signals[key] = _normalize_wav(data)
 
     if len(fs_set) != 1:
         raise ValueError(
@@ -611,7 +627,7 @@ def load_aformat_multichannel(path: Union[str, Path],
         )
 
     signals = {
-        name: data[:, i].astype(np.float64)
+        name: _normalize_wav(data[:, i])
         for i, name in enumerate(channel_order)
     }
     return signals, fs
@@ -665,7 +681,8 @@ def analyze_rir(source: Union[str, Path, dict],
 def export_bformat_wav(bformat: BFormatSignals,
                        output_path: Union[str, Path],
                        layout: str = "interleaved",
-                       order: str = "WXYZ") -> Path:
+                       order: str = "WYZX",
+                       fuma_normalize_w: bool = False) -> Path:
     """
     Export decoded B-format signals to WAV file(s) for cross-validation
     against third-party software (e.g. EASERA, dEQ, Soundfield plugins).
@@ -720,7 +737,13 @@ def export_bformat_wav(bformat: BFormatSignals,
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    channels = {"W": bformat.W, "X": bformat.X, "Y": bformat.Y, "Z": bformat.Z}
+    # Aplicar normalización FuMa en W si se solicita:
+    # W_FuMa = W * (1/√2) — reduce W 3 dB para igualar la convención de la
+    # mayoría de los plugins y software de análisis (EASERA, Reaper, etc.).
+    # Esto es necesario para que el LF calculado externamente coincida con el
+    # nuestro, ya que LF = Y²/W² y la escala relativa W/Y sí importa.
+    W = bformat.W * (1.0 / np.sqrt(2)) if fuma_normalize_w else bformat.W
+    channels = {"W": W, "X": bformat.X, "Y": bformat.Y, "Z": bformat.Z}
 
     if layout == "separate":
         written = []

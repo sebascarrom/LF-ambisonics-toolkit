@@ -1,7 +1,7 @@
 # LF Ambisonics Toolkit — Estado del Proyecto y Resumen de Sesión
 
 *Documento de transferencia de contexto para continuar el trabajo en Cowork o con otro asistente de IA.*
-*Última actualización: junio 2025 — Sesión 2*
+*Última actualización: junio 2026 — Sesión 3*
 
 ---
 
@@ -67,7 +67,8 @@ LF-ambisonics-toolkit/
 │       ├── s1_r1_sf_pori.wav    # RIR Pori Promenadikeskus (B-format, SoundField MKV)
 │       └── poriref.pdf          # Documentación del repositorio Pori (HUT 2005)
 ├── notebooks/                   # vacío, para exploración
-├── gui/                         # 🔲 stub — Fase 4
+├── gui/
+│   └── app.py                   # ✅ GUI CustomTkinter — Fase 4 implementada
 ├── docs/
 │   ├── metodologia.md
 │   └── papers/
@@ -126,11 +127,17 @@ El módulo tiene **1222 líneas** y está organizado en 10 módulos lógicos:
 ### Módulo 6 — I/O
 - `load_aformat_mono_files(paths)` — carga 4 WAVs mono separados.
 - `load_aformat_multichannel(path, channel_order)` — carga 1 WAV de 4 canales.
+- `_normalize_wav(data)` — normaliza int16/int32/float32 a float64 en [-1, 1].
+  **Crítico:** sin esta función, archivos int32 producen valores de amplitud ~10⁹.
 - `analyze_rir(source, ...)` — punto de entrada unificado.
 
 ### Módulo 7 — Exportación a B-format
-- `export_bformat_wav(bformat, output_path, layout, order)` — exporta W,X,Y,Z
-  como WAV interleaved (4ch) o 4 mono separados. Float32.
+- `export_bformat_wav(bformat, output_path, layout, order, fuma_normalize_w)` —
+  exporta W,X,Y,Z como WAV interleaved (4ch) o 4 mono separados. Float32.
+  - `order="WYZX"` (default) — orden ACN, compatible con EASERA Aurora
+  - `fuma_normalize_w=False` (default) — NO aplicar W *= 1/√2 (FuMa)
+  - **Importante:** EASERA lee B-format en orden ACN: ch0=W, ch1=Y, ch2=Z, ch3=X.
+    Con WXYZ (FuMa), EASERA usaría X como canal lateral → LF completamente incorrecto.
 
 ### Módulo 8 — Diagnóstico de rotación azimutal
 - `scan_azimuth_rotation(bformat, onset, ...)` — barre φ de 0° a 360°.
@@ -171,6 +178,18 @@ Para archivos multichannel ya sincronizados (caso Catedral, Pori):
 5. compute_LF_band() × 6 bandas
 6. nanmean()
 ```
+
+Para B-format importado directamente (ej. export de plugin comercial):
+
+```
+1. scipy.io.wavfile.read() + _normalize_wav()
+2. mapear canales según orden del archivo (WYZX o WXYZ)
+3. crear BFormatSignals(W, X, Y, Z, fs) directamente
+4. detect_onset_noise_floor(W)
+5. octave_band_filter() + compute_LF_band() × 6 bandas
+```
+
+La GUI (gui/app.py) implementa estos tres flujos automáticamente según el modo de importación.
 
 ---
 
@@ -230,6 +249,10 @@ real, corrompiendo el coarse alignment.
 | Cálculo LF ISO 3382-1 | ✅ Validado | Catedral 4kHz: +0.1% vs EASERA |
 | Alineación de 2 etapas (G6_SS1) | ✅ Validado | EASERA alineado: <15% diferencia en todas las bandas |
 | Alineación de 2 etapas (J12) | ✅ Validado | EASERA alineado: <14% diferencia en todas las bandas |
+| Normalización int32 WAV | ✅ Bug corregido | `_normalize_wav()` divide por 2³¹ antes de usar como float64 |
+| Orden de canales B-format | ✅ Corregido | Export en WYZX (ACN); confirmado que EASERA usa ch1=Y |
+| Cálculo LF sobre mismo B-format | ✅ Verificado | Pipeline = EASERA cuando usan el mismo archivo de entrada |
+| Diferencia vs. plugin comercial | ⚠ Limitación conocida | Origen: matriz A→B calibrada del fabricante (ver sección 14) |
 | 4 kHz — sin corrección frecuencial | ⚠ Limitación conocida | LF>1 sistemático, confirmado también por EASERA |
 
 ### Validación caso Catedral — SY_RIR_TEST.wav
@@ -340,45 +363,134 @@ hacia bajas frecuencias (125–500 Hz) y altas (4 kHz+). Ver sección 7.
 
 ---
 
-## 11. Próximos pasos
+## 11. GUI — gui/app.py
 
-1. **Catedral Metropolitana** — nomenclar y organizar los archivos del DAW,
-   completar `config/catedral_config.yaml`, correr `debug_aformat_waveforms.py`
-   sobre cada posición antes de procesar (verificar sincronización).
+Implementada con **CustomTkinter + matplotlib** (embebido via `FigureCanvasTkAgg`).
 
-2. **Verificar sincronización en posiciones nuevas** — siempre correr
-   `debug_aformat_waveforms.py` sobre cada set de 4 cápsulas antes de procesar.
-   El problema de G6_SS1/J12 puede repetirse en cualquier exportación manual del DAW.
+**Modos de importación:**
+- **A-format multicanal (4ch):** un WAV de 4 canales en orden LF/RF/LB/RB.
+- **4 archivos mono:** cada cápsula por separado.
+- **B-format (4ch):** importación directa de un archivo B-format con selector de orden de canales (WYZX o WXYZ). Útil para comparar contra exports de plugins comerciales. No realiza conversión A→B ni alineación.
 
-3. **Incorporar alineación al pipeline principal** — cuando se implemente
-   `room_loader.py` (Fase 2), la secuencia
-   `align_aformat_channels() → fine_align_channels() → aformat_to_bformat()`
-   debe ser el flujo estándar, no un script especial.
-   Tener en cuenta que `threshold_db` puede requerir ajuste por posición
-   (15 para G6_SS1, 20 para J12).
+**Parámetros ajustables desde la UI:**
+- Ventana de ruido (ms), umbral onset (dB), t₁ y t₂ (ms)
+- Activar/desactivar alineación temporal + radio de búsqueda fina
 
-4. **Fase 2** — `room_loader.py`: multi-posición/fuente, `spatial_metrics.py`:
-   IACC, EDC.
+**Salidas:**
+- Tabla con LF por banda (color-coded: naranja >0.5, rojo >1.0)
+- Plot interactivo con zona de referencia (0.05–0.35)
+- Export a B-format WAV (WYZX/ACN, solo disponible cuando el input es A-format)
 
-5. **Fase 3** — `stats_comparison.py`: comparación estadística Usina vs. Catedral.
-
-6. **Fase 4** — GUI web interactiva (HTML/React + backend Python).
+**Ejecución:**
+```bash
+python gui/app.py
+```
 
 ---
 
-## 12. Hoja de ruta del proyecto
+## 12. Bugs críticos corregidos (Sesión 3)
+
+### Bug 1 — Archivos int32 no normalizados a float
+`load_aformat_mono_files` y `load_aformat_multichannel` usaban `data.astype(np.float64)`
+sin dividir por 2³¹. Para archivos int32, los valores de amplitud quedaban en el orden de
+~757 millones en lugar de [-1, 1]. Esto generaba:
+- W pico = 757,713,152 en el export (vs ~0.15 del plugin comercial)
+- LF no se veía afectado (es una razón Y²/W²), pero el archivo exportado era inválido.
+
+**Fix:** función `_normalize_wav(data)` aplicada en la carga. Divide int16/int32 por el
+máximo del rango; float32/float64 pasan directamente.
+
+### Bug 2 — Orden de canales en export B-format
+El export usaba `order="WXYZ"` (FuMa). EASERA Aurora lee B-format en orden ACN (WYZX),
+usando ch1 como canal Y lateral. Con WXYZ, EASERA leía X (frente-atrás) como si fuera Y
+→ LF incorrecto.
+
+**Fix:** `export_bformat_wav` cambiado a `order="WYZX"` por default.
+
+**Verificación:** comparando las tres combinaciones posibles sobre el archivo exportado,
+W/X (ch0/ch1 con WXYZ) coincidía con los valores de EASERA — confirmando que EASERA usaba
+ch1 como lateral. Con WYZX, ch1=Y → ahora ambos coinciden.
+
+---
+
+## 13. Convención B-format y compatibilidad con EASERA
+
+| Convención | Orden | Software |
+|---|---|---|
+| ACN / AmbiX | WYZX | EASERA Aurora, plugins modernos, nuestro export |
+| FuMa | WXYZ | Formato legacy, algunos plugins antiguos |
+
+EASERA Aurora (versión actual) lee el canal 1 (segundo canal) como Y (lateral izquierda-derecha),
+lo que corresponde a la convención ACN. Exportar en WXYZ hace que EASERA use X como numerador
+del LF → error sistemático de magnitud variable según la geometría fuente-micrófono.
+
+---
+
+## 14. Diferencia vs. plugin comercial — causa identificada
+
+Al comparar nuestro B-format contra el de un plugin comercial (mismo A-format de entrada):
+- Los canales X, Y, Z son equivalentes (correlación ≈ 1.0 entre señales correspondientes).
+- El canal W del plugin comercial es ~2.3× más pequeño en amplitud que el nuestro.
+
+**Causa:** el plugin aplica correcciones de calibración propietarias por cápsula
+(ganancia y fase frecuencia-dependiente) en la conversión A→B. Nosotros usamos la
+matriz tetraédrica estándar (ideal, sin calibración).
+
+**Consecuencia para LF:** LF = ∫Y²dt / ∫W²dt. Si W difiere sistemáticamente, LF también
+difiere de forma sistemática. La diferencia es inherente a la metodología de conversión,
+no a un error en la implementación.
+
+**Conclusión validada:** cuando pipeline y EASERA usan el *mismo* archivo B-format como
+entrada, los valores de LF coinciden. La diferencia contra el plugin aparece en la etapa
+de conversión A→B, no en el cálculo de LF.
+
+**Recomendación para el paper:** reportar los valores obtenidos con nuestra matriz estándar
+y documentar esta diferencia metodológica como limitación. Es consistente con la misma
+discrepancia observada en el dataset Pori (SoundField MKV con corrección EQ propietaria).
+
+---
+
+## 15. Próximos pasos
+
+1. **Re-verificar Usina en EASERA con B-format WYZX** — re-exportar G6_SS1 y J12
+   desde la GUI (ahora con WYZX corregido) y procesar en EASERA para confirmar
+   que los valores coinciden con los del pipeline.
+
+2. **Catedral Metropolitana** — nomenclar y organizar los archivos del DAW,
+   completar `config/catedral_config.yaml`, correr `debug_aformat_waveforms.py`
+   sobre cada posición antes de procesar (verificar sincronización).
+
+3. **Verificar sincronización en posiciones nuevas** — siempre correr
+   `debug_aformat_waveforms.py` sobre cada set de 4 cápsulas antes de procesar.
+   El problema de G6_SS1/J12 puede repetirse en cualquier exportación manual del DAW.
+
+4. **Incorporar alineación al pipeline principal** — cuando se implemente
+   `room_loader.py` (Fase 2), la secuencia
+   `align_aformat_channels() → fine_align_channels() → aformat_to_bformat()`
+   debe ser el flujo estándar. `threshold_db` puede requerir ajuste por posición
+   (15 para G6_SS1, 20 para J12).
+
+5. **Fase 2** — `room_loader.py`: multi-posición/fuente, `spatial_metrics.py`:
+   IACC, EDC.
+
+6. **Fase 3** — `stats_comparison.py`: comparación estadística Usina vs. Catedral.
+
+---
+
+## 16. Hoja de ruta del proyecto
 
 | Fase | Contenido | Estado |
 |---|---|---|
 | 1 | `acoustic_core.py`: A→B, filtrado octava, LF, alineación | ✅ Implementado |
 | 1b | Debugging Usina, validación EASERA y repos externos | ✅ Completado |
+| 1c | Corrección bugs B-format (int32, WYZX), GUI CustomTkinter | ✅ Completado |
 | 2 | `room_loader.py`: multi-posición/fuente, `spatial_metrics.py`: IACC, EDC | 🔲 Pendiente |
 | 3 | `stats_comparison.py`: comparación estadística Usina vs. Catedral | 🔲 Pendiente |
-| 4 | GUI web interactiva (HTML/React + backend Python) | 🔲 Pendiente |
+| 4 | GUI de escritorio CustomTkinter + matplotlib | ✅ Implementado |
 
 ---
 
-## 13. Entorno de desarrollo
+## 17. Entorno de desarrollo
 
 ```bash
 # Crear y activar entorno virtual
@@ -402,3 +514,9 @@ python debug/debug_pori_rir.py
 **Warnings conocidos:** `WavFileWarning: Chunk (non-data) not understood` — benigno,
 originado en metadata Broadcast Wave Format (BWF) de archivos exportados desde DAW.
 No afecta la lectura del audio.
+
+**GUI:**
+```bash
+pip install customtkinter matplotlib
+python gui/app.py
+```

@@ -67,9 +67,9 @@ for session_folder, meta in POSITIONS.items():
         bformat,
         PROCESSED_DIR / f"{session_folder}_{meta['fuente']}_{meta['posicion']}_Bformat.wav",
         layout="interleaved",
-        order="WXYZ",
+        order="WYZX",
     )
-    print(f"  Exportado (interleaved WXYZ): {out_path}")
+    print(f"  Exportado (interleaved WYZX / ACN): {out_path}")
 
 print("\nListo. Recordá la nota sobre convención FuMa vs AmbiX antes de "
       "comparar valores de LF absolutos contra EASERA (ver acoustic_core.py).")
