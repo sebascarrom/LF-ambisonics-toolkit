@@ -15,9 +15,19 @@ import os
 from pathlib import Path
 
 # Path setup — funciona corriendo desde la raíz o desde gui/
+
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 os.chdir(_ROOT)
+
+from src.spatial_metrics import (
+    analyze_directionality,
+    plot_directional_panel,
+)
+import matplotlib.pyplot as plt
+
+
+
 
 import threading
 import warnings
@@ -175,12 +185,22 @@ class LFApp(ctk.CTk):
         r = self._param_row(sb, r, "t₂ integración (ms)", self.var_t2,
                             tooltip="Fin de la ventana de integración. ISO 3382-1: 80 ms.")
 
-        # Alineación
+        # Alineación agregado gpt
         self.var_align = ctk.BooleanVar(value=True)
-        ctk.CTkCheckBox(sb, text="Alineación temporal de canales",
-                        variable=self.var_align,
-                        command=self._update_align_ui).grid(
-            row=r, column=0, columnspan=2, padx=20, pady=(10, 2), sticky="w")
+        self.chk_align = ctk.CTkCheckBox(
+            sb,
+            text="Alineación temporal de canales",
+            variable=self.var_align,
+            command=self._update_align_ui
+        )
+        self.chk_align.grid(
+            row=r,
+            column=0,
+            columnspan=2,
+            padx=20,
+            pady=(10,2),
+            sticky="w"
+        )
         r += 1
 
         self.var_radius = ctk.StringVar(value="5.0")
@@ -207,8 +227,22 @@ class LFApp(ctk.CTk):
                                           font=ctk.CTkFont(size=14, weight="bold"),
                                           height=46,
                                           state="disabled")
-        self.btn_process.grid(row=100, column=0, columnspan=2, padx=20, pady=(4, 20), sticky="ew")
-
+        self.btn_process.grid(row=101, column=0, columnspan=2, padx=20, pady=(4, 20), sticky="ew")
+        self.btn_direction = ctk.CTkButton(
+                sb,
+                text="Directional Analysis",
+                command=self.show_directionality,
+                state="disabled",
+        )
+        #agregado gpt        
+        self.btn_direction.grid(
+            row=100,
+            column=0,
+            columnspan=2,
+            padx=20,
+            pady=(4,20),
+            sticky="ew"
+        )
     def _section_label(self, parent, row, text):
         ctk.CTkLabel(parent, text=text,
                      font=ctk.CTkFont(size=10, weight="bold"),
@@ -352,14 +386,25 @@ class LFApp(ctk.CTk):
             self._set_align_widgets_state("disabled")
 
     def _set_align_widgets_state(self, state):
-        """Habilita/deshabilita el checkbox y entry de alineación."""
-        for widget in (self.ent_radius, self.lbl_radius):
-            widget.configure(state=state)
-
+        self.chk_align.configure(state=state)
+        self.ent_radius.configure(state=state)
+    
+        self.lbl_radius.configure(
+            text_color="gray" if state=="disabled" else "white"
+        )
     def _update_align_ui(self):
+        if self.import_mode.get() == "bformat":
+            return
+    
         enabled = self.var_align.get()
-        self.ent_radius.configure(state="normal" if enabled else "disabled")
-        self.lbl_radius.configure(text_color="white" if enabled else "gray")
+    
+        self.ent_radius.configure(
+            state="normal" if enabled else "disabled"
+        )
+    
+        self.lbl_radius.configure(
+            text_color="white" if enabled else "gray"
+        )
 
     # ── Carga de archivos ─────────────────────────────────────────────────────
     def _load_files(self):
@@ -422,6 +467,7 @@ class LFApp(ctk.CTk):
                 text=f"✓ B-format cargado ({order})\n{fs} Hz · {dur_ms:.0f} ms",
                 text_color="#4caf50")
             self.btn_process.configure(state="normal")
+            self.btn_direction.configure(state="disabled")
             self.btn_export.configure(state="disabled")
         except Exception as e:
             self.lbl_status.configure(text=f"Error: {e}", text_color="red")
@@ -437,6 +483,8 @@ class LFApp(ctk.CTk):
             dur_ms = lengths[0] / fs * 1000
             msg = f"✓ {name}\n{fs} Hz · {dur_ms:.0f} ms"
             color = "#4caf50"
+#agregado gpt
+        self.btn_direction.configure(state="disabled")
 
         self.signals = signals
         self.fs = fs
@@ -479,6 +527,7 @@ class LFApp(ctk.CTk):
             # ── Modo B-format directo (sin conversión A→B) ────────────────────
             if self.bformat_input is not None:
                 bformat = self.bformat_input
+                self.bformat = bformat #agregado gpt
                 onset = detect_onset_noise_floor(
                     bformat.W, fs,
                     noise_window_ms=noise_window,
@@ -551,6 +600,9 @@ class LFApp(ctk.CTk):
         self.ax.legend(facecolor="#3a3a3a", labelcolor="#cccccc", fontsize=9, framealpha=0.7)
         self.fig.tight_layout(pad=1.5)
         self.canvas.draw()
+ 
+#agregado gpt
+        self.btn_direction.configure(state="normal")
 
         # Estado
         self.lbl_result_status.configure(
@@ -566,6 +618,7 @@ class LFApp(ctk.CTk):
         self.lbl_result_status.configure(text=f"Error: {msg}", text_color="#f44336")
         self.btn_process.configure(state="normal", text="▶   Procesar")
         self.processing = False
+        self.btn_direction.configure(state="disabled") #agregado gpt
         messagebox.showerror("Error de procesamiento", msg)
 
     # ── Exportar B-format ─────────────────────────────────────────────────────
@@ -584,6 +637,34 @@ class LFApp(ctk.CTk):
         except Exception as e:
             messagebox.showerror("Error al exportar", str(e))
 
+#agregado gpt
+    def show_directionality(self):
+    
+        if self.bformat is None:
+            messagebox.showwarning(
+                "Spatial Metrics",
+                "Run the LF analysis first."
+            )
+            return
+    
+        try:
+            direction = analyze_directionality(
+                self.bformat,
+                window_ms=1.0,
+            )
+            plt.close("all")
+            plot_directional_panel(
+                self.bformat,
+                direction,
+            )
+    
+            plt.show()
+    
+        except Exception as e:
+            messagebox.showerror(
+                "Spatial Metrics",
+                str(e)
+            )
 
 # ── Texto de instrucciones ─────────────────────────────────────────────────────
 INSTRUCTIONS_TEXT = """\

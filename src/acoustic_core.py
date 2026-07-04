@@ -354,6 +354,116 @@ def detect_onset_noise_floor(signal_w: np.ndarray,
     )
 
 
+#NUEVO MISMO PERO PARA DETECTAR EL FINAL
+
+def detect_rir_end(signal: np.ndarray,
+                   fs: int,
+                   noise_window_ms: float = 50.0,
+                   threshold_db: float = 3.0,
+                   analysis_window_ms: float = 5.0,
+                   min_consecutive_frames: int = 3) -> int:
+    """
+    Robust detection of the RIR's USEFUL END — the point after which the
+    energy has decayed into the estimated noise floor and does not rise
+    again — mirroring the philosophy of detect_onset_noise_floor() but
+    scanning from the END of the signal backward instead of from the
+    start forward.
+
+    Rationale
+    ---------
+    Just like onset detection, end-of-RIR detection should not rely on
+    an arbitrary fixed cutoff (e.g. "always use the last 80 ms") because
+    decay length varies enormously with room and source. Instead:
+
+      1. Estimate the noise floor from the first `noise_window_ms` of the
+         signal (same assumption as detect_onset_noise_floor: this is
+         silence/pre-roll — verify visually before trusting the result).
+      2. Compute short-time energy in non-overlapping frames of
+         `analysis_window_ms`.
+      3. Find the LAST sustained run of at least `min_consecutive_frames`
+         consecutive frames whose energy stays above
+         (noise_floor + threshold_db). The sustained-run requirement
+         filters out brief late reflections/clicks isolated in the
+         noise tail that aren't part of the genuine decay. The useful
+         end of the RIR is the sample right after that last sustained
+         run — i.e. the point where the decay curve has merged into the
+         noise floor and stays there.
+
+    A lower threshold_db than detect_onset_noise_floor's default (3 dB
+    here vs 15 dB there) is intentional: at the tail of a decay curve,
+    energy approaches the noise floor asymptotically, so demanding a
+    large margin above the floor would systematically cut the end of
+    the RIR too early (leaving valid decay tail unanalyzed).
+
+    Parameters
+    ----------
+    signal                  : broadband signal (e.g. W channel).
+    fs                      : sample rate in Hz.
+    noise_window_ms         : duration used to estimate the noise floor,
+                              taken from the very start of the signal
+                              (same reference noise floor as onset
+                              detection, for consistency).
+    threshold_db            : how far above the noise floor (dB) a frame
+                              must stay to be considered part of the
+                              useful (non-noise) signal.
+    analysis_window_ms      : analysis frame size for short-time energy.
+    min_consecutive_frames  : consecutive frames that must stay above
+                              threshold to count as a genuine sustained
+                              run (filters isolated late reflections in
+                              the noise tail).
+
+    Returns
+    -------
+    end_sample : sample index marking the end of the useful RIR (the
+                 sample right after the last qualifying sustained run).
+
+    Raises
+    ------
+    ValueError if no sustained run above the noise floor is found
+    anywhere in the signal, or if noise_window_ms exceeds the signal
+    length.
+    """
+    frame_len = max(1, int(analysis_window_ms / 1000 * fs))
+    noise_len = int(noise_window_ms / 1000 * fs)
+
+    if noise_len >= len(signal):
+        raise ValueError(
+            f"noise_window_ms ({noise_window_ms} ms) is longer than the "
+            "signal itself."
+        )
+
+    noise_floor_energy = np.mean(signal[:noise_len] ** 2)
+    if noise_floor_energy == 0:
+        noise_floor_energy = 1e-12  # avoid div-by-zero / -inf dB
+
+    threshold_linear = noise_floor_energy * (10.0 ** (threshold_db / 10.0))
+
+    n_frames = len(signal) // frame_len
+    if n_frames < min_consecutive_frames:
+        raise ValueError("Signal too short for the requested frame settings.")
+
+    frame_energies = np.array([
+        np.mean(signal[i * frame_len:(i + 1) * frame_len] ** 2)
+        for i in range(n_frames)
+    ])
+    above = frame_energies >= threshold_linear
+
+    # Walk backward from the end: the first sustained run we find,
+    # scanning in this direction, is the LAST sustained run in time.
+    for i in range(n_frames - min_consecutive_frames, -1, -1):
+        if np.all(above[i:i + min_consecutive_frames]):
+            return (i + min_consecutive_frames) * frame_len
+
+    raise ValueError(
+        f"No se encontró una racha sostenida de al menos "
+        f"{min_consecutive_frames} frame(s) de {analysis_window_ms} ms por "
+        f"encima de {threshold_db} dB sobre el piso de ruido estimado "
+        f"(de los primeros {noise_window_ms} ms). Probá ajustar "
+        "threshold_db, analysis_window_ms, o verificar visualmente si los "
+        "primeros ms del archivo son realmente silencio."
+    )
+
+
 # ─── Module 3: Octave-band Butterworth filtering ──────────────────────────────
 
 def octave_band_filter(signal_in: np.ndarray,
