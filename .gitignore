@@ -33,3 +33,7 @@ Thumbs.db
 
 # ── Variables de entorno / credenciales (por si la GUI suma backend) ─
 .env
+
+# ── Documentos / figuras del paper (no versionar) ────────────────────
+docs/
+CONTEXT_INFORME.md
