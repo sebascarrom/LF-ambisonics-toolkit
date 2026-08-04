@@ -43,4 +43,6 @@ RESUMEN_PROYECTO.md
 *.wav
 *.aiff
 *.flac
-debug/test_rirs/
+
+# ── Scripts de debug internos (no versionar) ─────────────────────────
+debug/
