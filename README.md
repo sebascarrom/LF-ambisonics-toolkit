@@ -10,7 +10,7 @@ Desarrollado en el marco de la cátedra de **Instrumentos y Mediciones Acústica
 — Universidad Nacional de Tres de Febrero — y presentado en el **XII Congreso Iberoamericano de
 Acústica FIA 2026**.
 
-> S. Carro · F. Parodi — UBA IMA · FIA 2026
+> S. Carro · F. Parodi — UNTREF · IMA · AES · FIA 2026
 
 ---
 
