@@ -6,9 +6,9 @@ Pipeline de código abierto para el cálculo del parámetro **Lateral Fraction (
 a partir de respuestas al impulso ambisónicas, con análisis direccional 3D del campo
 sonoro. Implementado en Python, conforme a **ISO 3382-1**.
 
-Desarrollado en el marco de la cátedra de **Instrumentos y Mediciones Acústicas (IMA)**
-— Universidad Nacional de Tres de Febrero — y presentado en el **XII Congreso Iberoamericano de
-Acústica FIA 2026**.
+Desarrollado en la **Universidad Nacional de Tres de Febrero**, con vinculación a la
+cátedra de **Instrumentos y Mediciones Acústicas (IMA)**, y presentado en el
+**XII Congreso Iberoamericano de Acústica FIA 2026**.
 
 > S. Carro · F. Parodi — UNTREF · IMA · AES · FIA 2026
 
@@ -155,7 +155,8 @@ Open-source Python toolkit for computing the **Lateral Fraction (LF)** parameter
 from ambisonic room impulse responses (RIRs), with 3D directional analysis of the
 sound field. Compliant with **ISO 3382-1**.
 
-Developed at the **Acoustical Measurements** course — Universidad Nacional de Tres de Febrero —
+Developed at **Universidad Nacional de Tres de Febrero**, with links to the
+**Acoustical Measurements (IMA)** course —
 and presented at **FIA 2026** (XII Ibero-American Congress of Acoustics).
 
 ### Features
