@@ -7,7 +7,7 @@ a partir de respuestas al impulso ambisónicas, con análisis direccional 3D del
 sonoro. Implementado en Python, conforme a **ISO 3382-1**.
 
 Desarrollado en el marco de la cátedra de **Instrumentos y Mediciones Acústicas (IMA)**
-— Universidad de Buenos Aires — y presentado en el **XII Congreso Iberoamericano de
+— Universidad Nacional de Tres de Febrero — y presentado en el **XII Congreso Iberoamericano de
 Acústica FIA 2026**.
 
 > S. Carro · F. Parodi — UBA IMA · FIA 2026
@@ -22,7 +22,7 @@ Acústica FIA 2026**.
 
 ---
 
-## ¿Qué hace?
+## Funcionalidades
 
 - Importa RIRs en **Formato A** (4 mono o 4ch) o **Formato B** (4ch, WYZX o WXYZ)
 - Convierte A → B con la matriz tetraédrica estándar
@@ -155,7 +155,7 @@ Open-source Python toolkit for computing the **Lateral Fraction (LF)** parameter
 from ambisonic room impulse responses (RIRs), with 3D directional analysis of the
 sound field. Compliant with **ISO 3382-1**.
 
-Developed at the **Acoustical Measurements** course — Universidad de Buenos Aires —
+Developed at the **Acoustical Measurements** course — Universidad Nacional de Tres de Febrero —
 and presented at **FIA 2026** (XII Ibero-American Congress of Acoustics).
 
 ### Features
