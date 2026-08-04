@@ -38,3 +38,9 @@ Thumbs.db
 docs/
 CONTEXT_INFORME.md
 RESUMEN_PROYECTO.md
+
+# ── Datos de audio / mediciones (no versionar) ───────────────────────
+*.wav
+*.aiff
+*.flac
+debug/test_rirs/
