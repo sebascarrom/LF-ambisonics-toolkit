@@ -7,8 +7,9 @@ a partir de respuestas al impulso ambisónicas, con análisis direccional 3D del
 sonoro. Implementado en Python, conforme a **ISO 3382-1**.
 
 Desarrollado en la **Universidad Nacional de Tres de Febrero**, con vinculación a la
-cátedra de **Instrumentos y Mediciones Acústicas (IMA)**, y presentado en el
-**XII Congreso Iberoamericano de Acústica FIA 2026**.
+cátedra de **Instrumentos y Mediciones Acústicas (IMA)**. Presentado en el
+**XII Congreso Iberoamericano de Acústica FIA 2026** y en la
+**[AES Latin American Conference 2026](https://lac2026.aesperu.org.pe/)**.
 
 > S. Carro · F. Parodi — UNTREF · IMA · AES · FIA 2026
 
@@ -156,8 +157,9 @@ from ambisonic room impulse responses (RIRs), with 3D directional analysis of th
 sound field. Compliant with **ISO 3382-1**.
 
 Developed at **Universidad Nacional de Tres de Febrero**, with links to the
-**Acoustical Measurements (IMA)** course —
-and presented at **FIA 2026** (XII Ibero-American Congress of Acoustics).
+**Acoustical Measurements (IMA)** course. Presented at the
+**XII Ibero-American Congress of Acoustics FIA 2026** and the
+**[AES Latin American Conference 2026](https://lac2026.aesperu.org.pe/)**.
 
 ### Features
 
